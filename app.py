@@ -261,20 +261,32 @@ class ActivityLogin(Resource):
         # Return JSON response
         return jsonify(serialized_login_logs)
     
-class ActivityLoginByID(Resource):
-    def get(self, id):
-        current_user_id = g.user.id 
-        if id != current_user_id:
-            abort(403, message="You are not authorized to access this resource")
+
+class ActivityLoginByEmail(Resource):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', type=str, required=True, help="Email cannot be blank")
+        parser.add_argument('password', type=str, required=True, help="Password cannot be blank")
+        args = parser.parse_args()
+
+        email = args['email']
+        password = args['password']
+
+        # Authenticate user using email and password
+        user = User.authenticate(email, password)
+        if not user:
+            abort(401, message="Invalid credentials")
+
         # Query activity logs filtering by 'login' action and user id
-        login_logs = ActivityLog.query.filter_by(action='login', user_id=id).all()
-        
+        login_logs = ActivityLog.query.filter_by(action='login', user_id=user.id).all()
+
         # Serialize the queried logs into a list of dictionaries
         serialized_login_logs = [log.to_dict() for log in login_logs]
-        
+
         # Return JSON response
         return jsonify(serialized_login_logs)
-    
+
+
     
 # API Resource Routing
 api.add_resource(UsersResource, '/users')
@@ -284,7 +296,7 @@ api.add_resource(UserPasswordResetResource, '/password/reset')
 api.add_resource(UserProfileUpdateResource, '/user/<int:id>/update')
 api.add_resource(LoginResource, '/login')
 api.add_resource(ActivityLogin, '/activity')
-api.add_resource(ActivityLoginByID, '/activitt/<int:id>')
+api.add_resource(ActivityLoginByEmail, '/activity-logs')
 
 api.add_resource(LeaveRequestResource, '/leaves')
 api.add_resource(LeaveStatusResource, '/leaves/<int:user_id>')
